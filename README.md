@@ -1,5 +1,10 @@
 # TPP-webinterface
 
+![Static Badge](https://img.shields.io/badge/Powered_by-Celery-blue?logo=celery)
+![Static Badge](https://img.shields.io/badge/Powered_by-FastApi-009485?logo=fastapi)
+![Static Badge](https://img.shields.io/badge/Powered_by-vue_2.7.x-blue?logo=vue.js)
+
+
 Web-interface for [TPPMKTOP](https://github.com/comcon1/TopologyPreProcessor). It uses docker-compose project [TPP-docker](https://github.com/comcon1/TPP-docker) which establishes the environment for `tppmktop` and bridges it to vue-application.
 
 ## Application structure
