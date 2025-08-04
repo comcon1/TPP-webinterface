@@ -11,7 +11,7 @@ import shutil
 import time
 
 # Configure Celery to use Redis broker and backend
-app = Celery('tasks')
+app = Celery('tpp')
 app.config_from_object('celeryconfig')
 
 
@@ -113,7 +113,7 @@ def request_process_tpprenum(self, pdb_content):
             text=True,                 # Decode to string
             check=True                 # Raise CalledProcessError on nonzero exit
         )
-        time.sleep(5)
+        time.sleep(2)
         logger.info("TPPRENUM finished")
     except subprocess.CalledProcessError as e:
         logger.error(

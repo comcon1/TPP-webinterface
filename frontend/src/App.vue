@@ -7,7 +7,10 @@
     </form>
     <div v-if="loading">Processing...</div>
     <div v-if="error" class="error">{{ error }}</div>
-
+    <div v-if="show_processing">
+      <p>Processing status.</p>
+      <textarea rows="3" cols="80" readonly v-model="processing"></textarea>
+    </div>
     <div v-if="result" class="modal">
       <table>
         <tr>
@@ -39,41 +42,70 @@
 </template>
 
 <script>
+const apiUrl = process.env.VUE_APP_API_URL;
+
 export default {
   data() {
     return {
       loading: false,
       error: '',
       result: '',
+      processing: '',
       reslog: '',
       res_copied: false,
-      log_copied: false
+      log_copied: false,
+      show_processing: false,
+      taskIds: [],
+      pollInterval: null,
     }
   },
   methods: {
+    async pollStatus() {
+      let statusLines = [];
+      // we are now processing just one task at a time
+      if (this.taskIds.length == 1) {
+        const id = this.taskIds[0];
+        try {
+          const response = await fetch(`${apiUrl}/status/${id}`);
+          const data = await response.json();
+          statusLines.push(`Task ${id}: ${data.status}${data.result ? ' - result got.' : ''}`);
+          if (data.status == 'SUCCESS') {
+            clearInterval(this.pollInterval);
+            this.result = data.result[0];
+            this.reslog = data.result[1];
+            this.loading = false;
+            this.taskIds.pop();
+          }
+        } catch (err) {
+          statusLines.push(`Task ${id}: Error fetching status`);
+        }
+      }
+      this.processing = statusLines.join('\n');
+    },
     onFileChange() {
       this.error = '';
       this.result = '';
       this.res_copied = false;
       this.log_copied = false;
-    },
+      this.processing = '';
+      this.show_processing = false;
+      this.taskIds = [];
+      this.loading = false;
+      this.reslog = '';
+    },  
     uploadFile() {
       const file = this.$refs.fileInput.files[0]
       if (!file) {
-        this.error = 'Please select a PDB file.'
-        return
+        this.error = 'Please select a PDB file.';
+        return;
       }
 
-      this.loading = true
-      this.error = ''
-      this.result = ''
-      this.res_copied = false;
-      this.log_copied = false;
+      this.loading = true;
 
       const formData = new FormData()
       formData.append('file', file)
 
-      fetch('http://localhost:8000/process_tpprenum/', {
+      fetch(`${apiUrl}/queue_tpprenum/`, {
         method: 'POST',
         body: formData,
       })
@@ -81,19 +113,23 @@ export default {
           if (!response.ok) {
             throw new Error('Server error: ' + (await response.text()))
           }
-          return response.json()
+          var x = response.json();
+          // console.log(JSON.stringify(x, null, 2));
+          return x;
         })
         .then(data => {
-          this.result = data.output_pdb;
-          this.reslog = data.stdout || '';
+          this.taskIds.push(data.task_id);
         })
         .catch(err => {
           this.error = 'Failed: ' + err.message;
         })
         .finally(() => {
-          this.loading = false;
+          this.show_processing = true;
         })
     },
+    //  ---------------------------------------
+    //            Other stuff
+    //  --------------------------------------- 
     copyResult() {
       const textarea = this.$refs.resultTA;
       textarea.focus();
@@ -138,10 +174,27 @@ export default {
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
     },
+    downloadLog() {
+      const blob = new Blob([this.reslog], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "program.log";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    },
     closeResult() {
       this.result = '';
       this.copied = false;
     }
+  },
+  mounted() {
+    this.pollStatus(); // Run once immediately
+    this.pollInterval = setInterval(this.pollStatus, 500); // Every 3 seconds
+  },
+  beforeDestroy() {
+    clearInterval(this.pollInterval);
   }
 }
 </script>
