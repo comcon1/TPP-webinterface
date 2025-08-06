@@ -105,7 +105,9 @@ def request_process_tpprenum(self, pdb_content):
         rel_input = self.request.id + '/input.pdb'
         rel_output = self.request.id + '/output.pdb'
         procres = subprocess.run(
-            ['docker', 'exec', container_name, 'tpprenum', 
+            ['docker', 'exec',
+             "--user", f"{os.getuid()}:{os.getgid()}",
+             container_name, 'tpprenum',
              '-i', rel_input, '-o', rel_output],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # Capture stderr too
@@ -132,4 +134,94 @@ def request_process_tpprenum(self, pdb_content):
         logger.info(f"Cleaning calc-folder {twd}..")
         shutil.rmtree(twd)
         return result_pdb, procres.stdout
+
+
+@app.task(bind=True, soft_time_limit=60)
+def request_process_tppmktop(self, pdb_content):
+    """
+    Process TPPMKTOP on PDB strings. Output folder will live 5 min after 
+    result is made.
+
+    :return: Tuple with status code and path to the output folder
+             0 for success, 1 for error, 2 for exception
+             if 0/1, the second element is the path to the output folder
+             if 2, the second element is the error message
+    """
+    container_name = self.app.conf.get('CONTAINER_NAME', 'tpproject-tpp-1')
+    container_vol = self.app.conf.get('CONTAINER_VOL', '/tmp/work')
+    logger = self.app.log.get_default_logger()
+
+    logger.info("Requested MKTOP on file with %n strings")
+    twd = os.path.join(container_vol, self.request.id)
+    try:
+        os.mkdir(twd)
+    except Exception as e:
+        logger.error(
+                f'Problem making calc-folder {twd} '
+                f'Exception: {e}')
+        return (2, str(e))
+    logger.info(f"Saving PDB: {twd}/input.pdb")
+    try:
+        with open(os.path.join(twd, 'input.pdb'), 'w') as fd:
+            fd.write(pdb_content)
+    except Exception as e:
+        logger.error(
+                f'Problem making calc-PDB {twd}/input.pdb '
+                f'Exception: {e}')
+        return (2,  str(e))
+
+    logger.info("Saved.")
+    
+    try:
+        # Run the external command and capture its output
+        logger.info("Running TPPMKTOP")
+        rel_input = self.request.id + '/input.pdb'
+        rel_output = self.request.id + '/output.itp'
+        # docker exec tpproject-tpp-1 runtppmktop.sh -i proc-simpl.pdb -o output.itp -l lack.itp -m -f OPLS-AA
+        procres = subprocess.run(
+            ['docker', 'exec',
+             "--user", f"{os.getuid()}:{os.getgid()}",
+             container_name, 'runtppmktop.sh',
+             '-i', rel_input, '-o', rel_output, '-l', 'lack.itp', 
+             '-m', '-f', 'OPLS-AA'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # Capture stderr too
+            text=True,                 # Decode to string
+            check=True                 # Raise CalledProcessError on nonzero exit
+        )
+        logger.info("TPPRENUM finished")
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            f"Error running command: {e.cmd}\n"
+            f"Exit code: {e.returncode}\n"
+            f"Output: {e.output}"
+        )
+        res_pair = (1, twd)
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.request.id} hit soft time limit. Cleaning up.")
+        res_pair = (1, twd)
+    else:
+        logger.info("Normal execution!")
+        res_pair = (0, twd)
+    finally:
+        logger.info(f"Calc-folder {twd} is scheduled to be cleaned in 5 min..")
+        remove_tppmktop_folder.apply_async(countdown=300, args=[twd])
+        return res_pair
+
+
+@app.task(bind=True)
+def remove_tppmktop_folder(self, folder_path):
+    """
+    Remove the TPPMKTOP folder after a delay.
+    This function is intended to be run after a TPPMKTOP task completes.
+    
+    :param folder_path: Path to the folder to be removed
+    """
+    logger = self.app.log.get_default_logger()
+    try:
+        shutil.rmtree(folder_path)
+        logger.info(f"Removed folder: {folder_path}")
+    except Exception as e:
+        logger.error(f"Error removing folder {folder_path}: {e}")
+
 

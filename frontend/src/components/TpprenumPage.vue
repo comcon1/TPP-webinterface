@@ -42,7 +42,7 @@
 </template>
 
 <script>
-const apiUrl = process.env.VUE_APP_API_URL;
+import { upload_func, status_update } from '@/utils/misc.js'
 
 export default {
   data() {
@@ -61,26 +61,7 @@ export default {
   },
   methods: {
     async pollStatus() {
-      let statusLines = [];
-      // we are now processing just one task at a time
-      if (this.taskIds.length == 1) {
-        const id = this.taskIds[0];
-        try {
-          const response = await fetch(`${apiUrl}/status/${id}`);
-          const data = await response.json();
-          statusLines.push(`Task ${id}: ${data.status}${data.result ? ' - result got.' : ''}`);
-          if (data.status == 'SUCCESS') {
-            clearInterval(this.pollInterval);
-            this.result = data.result[0];
-            this.reslog = data.result[1];
-            this.loading = false;
-            this.taskIds.pop();
-          }
-        } catch (err) {
-          statusLines.push(`Task ${id}: Error fetching status`);
-        }
-      }
-      this.processing = statusLines.join('\n');
+      await status_update(this);
     },
     clearAll() {
       this.error = '';
@@ -97,38 +78,7 @@ export default {
       this.clearAll();
     },  
     uploadFile() {
-      const file = this.$refs.fileInput.files[0]
-      if (!file) {
-        this.error = 'Please select a PDB file.';
-        return;
-      }
-
-      this.loading = true;
-
-      const formData = new FormData()
-      formData.append('file', file)
-
-      fetch(`${apiUrl}/queue_tpprenum/`, {
-        method: 'POST',
-        body: formData,
-      })
-        .then(async response => {
-          if (!response.ok) {
-            throw new Error('Server error: ' + (await response.text()))
-          }
-          var x = response.json();
-          // console.log(JSON.stringify(x, null, 2));
-          return x;
-        })
-        .then(data => {
-          this.taskIds.push(data.task_id);
-        })
-        .catch(err => {
-          this.error = 'Failed: ' + err.message;
-        })
-        .finally(() => {
-          this.show_processing = true;
-        })
+      upload_func(this, 'tpprenum');
     },
     //  ---------------------------------------
     //            Other stuff

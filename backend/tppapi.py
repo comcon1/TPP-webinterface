@@ -54,6 +54,17 @@ async def queue_tpprenum(file: UploadFile = File(...)):
     return {"task_id": task.id}
 
 
+@app.post("/queue_tppmktop/")
+async def queue_tppmktop(file: UploadFile = File(...)):
+    """Queue a TPPMKTOP task with the uploaded file."""
+    pdbtxt = await file.read()
+    pdbtxt = pdbtxt.decode()  # assuming the file is text
+    # Start Celery task
+    task = ct.app.send_task("celery_tasks.request_process_tppmktop", 
+                            args=[pdbtxt])
+    return {"task_id": task.id}
+
+
 @app.get("/status/{task_id}")
 def get_status(task_id: str):
     task_result = AsyncResult(task_id, app=ct.app)
