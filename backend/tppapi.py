@@ -2,6 +2,8 @@
 FastAPI back-end for TPPRENUM / TPPMKTOP runners.
 """
 
+import os
+import time
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from celery.result import AsyncResult
@@ -78,4 +80,24 @@ def get_status(task_id: str):
             )
     }
 
-
+@app.get("/status/diralive/{task_id}")
+def get_diralive_status(task_id: str):
+    """Check how long will the directory for the task live."""
+    container_vol = ct.app.conf.get('CONTAINER_VOL', '/tmp/work')
+    if not task_id:
+        raise HTTPException(status_code=400, detail="Task ID is required")
+    # no folder - no task
+    task_dir = os.path.join(container_vol, task_id)
+    if not os.path.isdir(task_dir):
+        return {"task_id": task_id, "dir_alive": 0}    
+    # task not ready - time unknown
+    task_result = AsyncResult(task_id, app=ct.app)
+    if task_result.status == "PENDING":
+        return {"task_id": task_id, "dir_alive": -1}
+    # task ready: arithmetic
+    of = os.path.join(task_dir, 'output.itp')
+    if not os.path.isfile(of):
+        raise HTTPException(status_code=500, detail="Output file not found")
+    output_time = os.path.getmtime(of)
+    time_left = 5 - (time.time() - output_time)/60.
+    return {"task_id": task_id, "dir_alive": time_left}

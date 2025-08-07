@@ -15,7 +15,7 @@
 </template>
 
 <script>
-import { upload_func, status_update } from '@/utils/misc.js'
+import { apiUrl, upload_func, status_update } from '@/utils/misc.js'
 
 export default {
   data() {
@@ -34,10 +34,36 @@ export default {
   },
   methods: {
     async pollStatus() {
-      await status_update(this);
+      await status_update(this, true);
+    },
+    async updateDirAlive() {
+      fetch(`${apiUrl}/status/diralive/${this.taskIds[0]}/`)
+      .then(async response => {
+          if (!response.ok) {
+          throw new Error('Server error: ' + (await response.text()))
+          }
+          var x = response.json();
+          // console.log(JSON.stringify(x, null, 2));
+          return x;
+      })
+      .then(data => {
+          if (data.task_id !== this.taskIds[0]) {
+              throw new Error("Task ID mismatch: expected " + this.taskIds[0] + ", got " + data.task_id);
+          }
+          let strs = this.processing.split('\n');
+          strs[1] = 'Folder will be removed in ' + data.dir_alive.toFixed(1) + ' min.';
+          this.processing = strs.join('\n');
+      })
+      .catch(err => {
+          this.error = 'Failed: ' + err.message;
+      })
+      .finally(() => {
+          this.show_processing = true;
+      });
     },
     uploadFile() {
       upload_func(this, 'tppmktop');
+      this.processing += '\nFolder will be removed in 5 min.'
     }, 
     clearAll() {
       this.error = '';

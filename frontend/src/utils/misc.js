@@ -36,24 +36,29 @@ function upload_func(obj, task) {
     });
 }
 
-async function status_update(obj) {
+async function status_update(obj, afterSuccess = false) {
     let statusLines = [];
     // we are now processing just one task at a time
-    if (obj.taskIds.length == 1) {
+    if (obj.taskIds.length == 1 && obj.loading) {
     const id = obj.taskIds[0];
     try {
         const response = await fetch(`${apiUrl}/status/${id}`);
         const data = await response.json();
         statusLines.push(`Task ${id}: ${data.status}${data.result ? ' - result got.' : ''}`);
         if (data.status == 'SUCCESS') {
-        clearInterval(obj.pollInterval);
-        obj.result = data.result[0];
-        obj.reslog = data.result[1];
-        obj.loading = false;
-        obj.taskIds.pop();
+            clearInterval(obj.pollInterval);
+            obj.loading = false;
+            if (afterSuccess) {
+                setInterval(obj.updateDirAlive, 1000);
+            } else {
+                obj.result = data.result[0];
+                obj.reslog = data.result[1];
+                obj.taskIds.pop();
+            }
         }
     } catch (err) {
         statusLines.push(`Task ${id}: Error fetching status`);
+        console.log(err.message);
     }
     }
     obj.processing = statusLines.join('\n');
