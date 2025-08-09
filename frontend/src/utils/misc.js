@@ -27,6 +27,10 @@ function upload_func(obj, task) {
     })
     .then(data => {
         obj.taskIds.push(data.task_id);
+        if (task == 'tppmktop') {
+            obj.processing += '\nFolder will be removed in 5 min.';
+            obj.show_download = true;
+        }
     })
     .catch(err => {
         obj.error = 'Failed: ' + err.message;
@@ -49,7 +53,8 @@ async function status_update(obj, afterSuccess = false) {
             clearInterval(obj.pollInterval);
             obj.loading = false;
             if (afterSuccess) {
-                setInterval(obj.updateDirAlive, 1000);
+                obj.updateDirAliveInterval = setInterval(obj.updateDirAlive, 1000);
+                obj.updateFilesForDownload();
             } else {
                 obj.result = data.result[0];
                 obj.reslog = data.result[1];

@@ -10,6 +10,16 @@
       <div v-if="show_processing">
         <p>Processing status:</p>
         <textarea rows="3" cols="80" readonly v-model="processing"></textarea>
+        <div v-if="show_download">
+          <p>Results:</p>
+          <ul class="result-files">
+            <li v-for="file in result_files" :key="file.name">
+              <a :href="file.url" :download="file.name" v-if="file.exists">{{ file.name }}</a>
+              <span v-else>{{ file.name }} (not available)</span>
+            </li>
+          </ul>
+        </div>
+        <button @click="closeResult" :disabled="!show_download">Close</button>
       </div>
     </div>
 </template>
@@ -28,8 +38,11 @@ export default {
       res_copied: false,
       log_copied: false,
       show_processing: false,
+      show_download: false,
       taskIds: [],
       pollInterval: null,
+      updateDirAliveInterval: null,
+      result_files: []
     }
   },
   methods: {
@@ -52,18 +65,59 @@ export default {
           }
           let strs = this.processing.split('\n');
           strs[1] = 'Folder will be removed in ' + data.dir_alive.toFixed(1) + ' min.';
+          if (data.dir_alive == 0) {
+            strs.push('Folder has been removed.');
+            this.show_download = false;
+            clearInterval(this.updateDirAliveInterval);
+          }
           this.processing = strs.join('\n');
       })
       .catch(err => {
           this.error = 'Failed: ' + err.message;
+            clearInterval(this.updateDirAliveInterval);
       })
       .finally(() => {
           this.show_processing = true;
       });
     },
+    updateFilesForDownload() {
+      // make base file list
+      this.result_files = [
+        { 
+          name: 'output.itp', 
+          url: `${apiUrl}/download/${this.taskIds[0]}/output.itp`, 
+          exists: false 
+        },
+        { 
+          name: 'lack.itp', 
+          url: `${apiUrl}/download/${this.taskIds[0]}/lack.itp`, 
+          exists: false 
+        },
+        { 
+          name: 'tppmktop.log', 
+          url: `${apiUrl}/download/${this.taskIds[0]}/tppmktop.log`, 
+          exists: false 
+        }
+      ];
+      // fetch file list from server
+      let req = `${apiUrl}/status/files/${this.taskIds[0]}/`;
+      console.log('Fetching files from: ' + req);
+      fetch(req)
+      .then(async response => {
+          if (!response.ok) {
+            throw new Error('Server error: ' + (await response.text()));
+          }
+          return response.json();
+      })
+      .then(data => {
+          console.log(JSON.stringify(data.files, null, 2));
+          this.result_files.forEach(file => {
+            file.exists = data.files[file.name] !== undefined;
+          });
+      })
+    },
     uploadFile() {
       upload_func(this, 'tppmktop');
-      this.processing += '\nFolder will be removed in 5 min.'
     }, 
     clearAll() {
       this.error = '';
@@ -73,12 +127,20 @@ export default {
       this.log_copied = false;
       this.processing = '';
       this.show_processing = false;
+      this.show_download = false;
       this.taskIds = [];
       this.loading = false;
     },
     onFileChange() {
       this.clearAll();
-    }  
+    },  
+    closeResult() {
+      this.clearAll();
+      if (this.updateDirAliveInterval !== null) {
+        clearInterval(this.updateDirAliveInterval);
+      }
+      this.$refs.fileInput.value = '';
+    }
   },
   mounted() {
     this.pollStatus();
@@ -86,6 +148,7 @@ export default {
   },
   beforeDestroy() {
     clearInterval(this.pollInterval);
+    clearInterval(this.updateDirAliveInterval);
   }
 }
 </script>
@@ -116,5 +179,21 @@ textarea {
 }
 button {
   margin: 0.5em 0.5em 0 0;
+}
+ul.result-files {
+  list-style: none;        /* Remove default bullets */
+  font-size: 9pt;
+  padding: 0;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;  /* Monospace (tt) font */
+}
+
+ul.result-files li {
+  display: inline;         /* Display items in one line */
+  font-family: inherit;    /* Inherit monospace font */
+}
+
+ul.result-files li:not(:last-child)::after {
+  content: " | ";          /* Add separator after each item except last */
 }
 </style>

@@ -112,7 +112,8 @@ def request_process_tpprenum(self, pdb_content):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # Capture stderr too
             text=True,                 # Decode to string
-            check=True                 # Raise CalledProcessError on nonzero exit
+            check=True,                # Raise CalledProcessError on nonzero exit
+            timeout=60
         )
         logger.info("TPPRENUM finished")
     except subprocess.CalledProcessError as e:
@@ -177,19 +178,25 @@ def request_process_tppmktop(self, pdb_content):
         logger.info("Running TPPMKTOP")
         rel_input = self.request.id + '/input.pdb'
         rel_output = self.request.id + '/output.itp'
+        rel_lack = self.request.id + '/lack.itp'
         # docker exec tpproject-tpp-1 runtppmktop.sh -i proc-simpl.pdb -o output.itp -l lack.itp -m -f OPLS-AA
         procres = subprocess.run(
             ['docker', 'exec',
              "--user", f"{os.getuid()}:{os.getgid()}",
              container_name, 'runtppmktop.sh',
-             '-i', rel_input, '-o', rel_output, '-l', 'lack.itp', 
+             '-i', rel_input, '-o', rel_output, '-l', rel_lack,
              '-m', '-f', 'OPLS-AA'],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # Capture stderr too
             text=True,                 # Decode to string
-            check=True                 # Raise CalledProcessError on nonzero exit
+            check=True,                # Raise CalledProcessError on nonzero exit
+            timeout=60
         )
-        logger.info("TPPRENUM finished")
+        os.rename(
+            os.path.join(container_vol, 'tppmktop.log'),
+            os.path.join(twd, 'tppmktop.log')
+        )
+        logger.info("TPPMKTOP finished")
     except subprocess.CalledProcessError as e:
         logger.error(
             f"Error running command: {e.cmd}\n"

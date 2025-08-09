@@ -7,6 +7,7 @@ import time
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from celery.result import AsyncResult
+from fastapi.responses import FileResponse
 import celery_tasks as ct
 
 app = FastAPI()
@@ -80,6 +81,7 @@ def get_status(task_id: str):
             )
     }
 
+
 @app.get("/status/diralive/{task_id}")
 def get_diralive_status(task_id: str):
     """Check how long will the directory for the task live."""
@@ -101,3 +103,40 @@ def get_diralive_status(task_id: str):
     output_time = os.path.getmtime(of)
     time_left = 5 - (time.time() - output_time)/60.
     return {"task_id": task_id, "dir_alive": time_left}
+
+
+@app.get("/status/files/{task_id}")
+def get_files(task_id: str):
+    """Get list of files in the task directory."""
+    container_vol = ct.app.conf.get('CONTAINER_VOL', '/tmp/work')
+    if not task_id:
+        raise HTTPException(status_code=400, detail="Task ID is required")
+    task_dir = os.path.join(container_vol, task_id)
+    if not os.path.isdir(task_dir):
+        raise HTTPException(status_code=404, detail="Task directory not found")
+
+    files = os.listdir(task_dir)
+    # get size for every file
+    try:
+        files = {
+            f: os.path.getsize(os.path.join(task_dir, f))
+            for f in files
+        }
+    except OSError as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error reading files: {e}")
+    return {"task_id": task_id, "files": files}
+
+
+@app.get("/download/{task_id}/{filename}")
+async def download_file(task_id: str, filename: str):
+    if not task_id:
+        raise HTTPException(status_code=400, detail="Task ID is required")
+    if not filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+    container_vol = ct.app.conf.get('CONTAINER_VOL', '/tmp/work')
+    file_path = os.path.join(container_vol, task_id, filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path=file_path, filename=filename,
+                        media_type='application/octet-stream')
