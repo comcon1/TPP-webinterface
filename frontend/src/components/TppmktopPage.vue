@@ -19,15 +19,28 @@
             </li>
           </ul>
         </div>
-        <button @click="closeResult" :disabled="!show_download">Close</button>
+        <button @click="closeResult" :disabled="!show_download && !enable_close_button">Close</button>
       </div>
     </div>
 </template>
 
 <script>
 import { apiUrl, upload_func, status_update } from '@/utils/misc.js'
+const metaDescription = `
+TPPMKTOP service of TPPMKTOP project. It allows one to upload
+PDB file and get topology files for OPLS-AA (open source) force field.
+`;
 
 export default {
+  metaInfo: {
+    title: 'TPPMKTOP - MD topology generator',
+    meta: [
+      {
+        name: 'description',
+        content: metaDescription.trim()
+      }
+    ]
+  },
   data() {
     return {
       loading: false,
@@ -68,37 +81,39 @@ export default {
           if (data.dir_alive == 0) {
             strs.push('Folder has been removed.');
             this.show_download = false;
+            this.enable_close_button = true;
             clearInterval(this.updateDirAliveInterval);
           }
           this.processing = strs.join('\n');
       })
       .catch(err => {
           this.error = 'Failed: ' + err.message;
-            clearInterval(this.updateDirAliveInterval);
+          this.enable_close_button = true;
+          clearInterval(this.updateDirAliveInterval);
       })
       .finally(() => {
+          // we still show processing status
+          // even without download abilities
           this.show_processing = true;
       });
     },
     updateFilesForDownload() {
       // make base file list
-      this.result_files = [
-        { 
-          name: 'output.itp', 
-          url: `${apiUrl}/download/${this.taskIds[0]}/output.itp`, 
-          exists: false 
-        },
-        { 
-          name: 'lack.itp', 
-          url: `${apiUrl}/download/${this.taskIds[0]}/lack.itp`, 
-          exists: false 
-        },
-        { 
-          name: 'tppmktop.log', 
-          url: `${apiUrl}/download/${this.taskIds[0]}/tppmktop.log`, 
-          exists: false 
-        }
+      let file_list = [
+        'output.itp',
+        'output_ff.itp',
+        'lack.itp',
+        'tppmktop.log',
+        'console_output.log'
       ];
+      this.result_files = [];
+      for (let fnm of file_list) {
+        this.result_files.push({
+          name: fnm,
+          url: `${apiUrl}/download/${this.taskIds[0]}/${fnm}`,
+          exists: false
+        });
+      }
       // fetch file list from server
       let req = `${apiUrl}/status/files/${this.taskIds[0]}/`;
       console.log('Fetching files from: ' + req);
@@ -128,6 +143,7 @@ export default {
       this.processing = '';
       this.show_processing = false;
       this.show_download = false;
+      this.enable_close_button = false;
       this.taskIds = [];
       this.loading = false;
     },

@@ -42,9 +42,22 @@
 </template>
 
 <script>
-import { upload_func, status_update } from '@/utils/misc.js'
+import { upload_func, status_update } from '@/utils/misc.js';
+const metaDescription = `
+TPPRENUM service of TPPMKTOP project. It allows one to upload 
+PDB file with any atom order and get resulting nicely reordered PDB file.
+`;
 
 export default {
+  metaInfo: {
+    title: 'TPPRENUM - PDB renumbering service',
+    meta: [
+      {
+        name: 'description',
+        content: metaDescription.trim()
+      }
+    ]
+  },
   data() {
     return {
       loading: false,

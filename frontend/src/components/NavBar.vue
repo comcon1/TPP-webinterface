@@ -7,6 +7,9 @@
       <li>
         <router-link to="/tppmktop">TPPmktop</router-link>
       </li>
+      <li>
+        <router-link to="/about">About</router-link>
+      </li>
     </ul>
   </nav>
 </template>

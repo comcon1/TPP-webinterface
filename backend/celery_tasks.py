@@ -185,13 +185,19 @@ def request_process_tppmktop(self, pdb_content):
              "--user", f"{os.getuid()}:{os.getgid()}",
              container_name, 'runtppmktop.sh',
              '-i', rel_input, '-o', rel_output, '-l', rel_lack,
-             '-m', '-f', 'OPLS-AA'],
+             '-m',
+             '--separate',
+             '-f', 'OPLS-AA'],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # Capture stderr too
             text=True,                 # Decode to string
             check=True,                # Raise CalledProcessError on nonzero exit
             timeout=60
         )
+        # save console output to the log
+        with open(os.path.join(twd, 'console_output.log'), 'w') as fd:
+            fd.write(procres.stdout)
+        # move program log to project folder
         os.rename(
             os.path.join(container_vol, 'tppmktop.log'),
             os.path.join(twd, 'tppmktop.log')
