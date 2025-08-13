@@ -77,3 +77,47 @@ screen -dmS taskmanager celery -A celery_tasks worker --loglevel=info
 cd ../frontend
 screen -dmS npm npm run serve
 ```
+
+# Production notes
+
+For production, we do everything the same but proxy API and serve with NGINX.
+
+1. Set up NGINX proxy for serve and proxy for API
+```
+server {
+    listen 80;
+    server_name mydomain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name mydomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/mydomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mydomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+```
+2. Set up `.env.production` in `./frontend` to
+```
+VUE_APP_API_URL=https://mydomain.com/api
+```
+3. Build frontend and run serve on localhost:8080

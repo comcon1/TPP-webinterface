@@ -63,7 +63,7 @@ export default {
       await status_update(this, true);
     },
     async updateDirAlive() {
-      fetch(`${apiUrl}/status/diralive/${this.taskIds[0]}/`)
+      fetch(`${apiUrl}/status/diralive/${this.taskIds[0]}`)
       .then(async response => {
           if (!response.ok) {
           throw new Error('Server error: ' + (await response.text()))
@@ -115,7 +115,7 @@ export default {
         });
       }
       // fetch file list from server
-      let req = `${apiUrl}/status/files/${this.taskIds[0]}/`;
+      let req = `${apiUrl}/status/files/${this.taskIds[0]}`;
       console.log('Fetching files from: ' + req);
       fetch(req)
       .then(async response => {
