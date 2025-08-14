@@ -11,7 +11,7 @@ import shutil
 
 # Configure Celery to use Redis broker and backend
 app = Celery('tpp')
-app.config_from_object('celeryconfig')
+app.config_from_object('tppapi.celeryconfig')
 
 
 @app.task(bind=True)

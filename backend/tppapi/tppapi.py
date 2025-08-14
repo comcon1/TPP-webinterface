@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from celery.result import AsyncResult
 from fastapi.responses import FileResponse
-import celery_tasks as ct
+import tppapi.celery_tasks as ct
 
 app = FastAPI()
 
@@ -52,7 +52,7 @@ async def queue_tpprenum(file: UploadFile = File(...)):
     pdbtxt = await file.read()
     pdbtxt = pdbtxt.decode()  # assuming the file is text
     # Start Celery task
-    task = ct.app.send_task("celery_tasks.request_process_tpprenum", 
+    task = ct.app.send_task("tppapi.celery_tasks.request_process_tpprenum", 
                             args=[pdbtxt])
     return {"task_id": task.id}
 
@@ -63,7 +63,7 @@ async def queue_tppmktop(file: UploadFile = File(...)):
     pdbtxt = await file.read()
     pdbtxt = pdbtxt.decode()  # assuming the file is text
     # Start Celery task
-    task = ct.app.send_task("celery_tasks.request_process_tppmktop", 
+    task = ct.app.send_task("tppapi.celery_tasks.request_process_tppmktop", 
                             args=[pdbtxt])
     return {"task_id": task.id}
 
