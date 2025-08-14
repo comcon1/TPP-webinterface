@@ -50,7 +50,6 @@ async function status_update(obj, afterSuccess = false) {
         const data = await response.json();
         statusLines.push(`Task ${id}: ${data.status}${data.result ? ' - result got.' : ''}`);
         if (data.status == 'SUCCESS') {
-            clearInterval(obj.pollInterval);
             obj.loading = false;
             if (afterSuccess) {
                 obj.updateDirAliveInterval = setInterval(obj.updateDirAlive, 1000);
