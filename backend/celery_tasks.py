@@ -95,10 +95,13 @@ def request_process_tpprenum(self, pdb_content):
         logger.error(
                 f'Problem making calc-PDB {twd}/input.pdb '
                 f'Exception: {e}')
+        os.rmdir(twd)
         return None,  str(e)
 
     logger.info("Saved.")
-    
+    result_pdb = None
+    procres = None
+
     try:
         # Run the external command and capture its output
         logger.info("Running TPPRENUM")
@@ -117,24 +120,30 @@ def request_process_tpprenum(self, pdb_content):
         )
         logger.info("TPPRENUM finished")
     except subprocess.CalledProcessError as e:
+        # show max last 50 
+        lns = e.output.split('\n')
+        if len(lns) > 50:
+            lns = lns[-50:-1]
+        # logging
         logger.error(
             f"Error running command: {e.cmd}\n"
             f"Exit code: {e.returncode}\n"
-            f"Output: {e.output}"
+            "Output: " + '\n'.join(lns)
         )
         return (None, e.output)
     except SoftTimeLimitExceeded:
         logger.warning(f"Task {self.request.id} hit soft time limit. Cleaning up.")
-        result_pdb = None
+        #TODO: timeout task termination
+        return (None, "You upload too large PDB file and reach current timeout.")
     else:
         logger.info("Normal execution!")
         with open(os.path.join(twd, 'output.pdb'), 'r') as fd:
             pdb_out = fd.read()
         result_pdb = pdb_out
+        return result_pdb, procres.stdout
     finally:
         logger.info(f"Cleaning calc-folder {twd}..")
         shutil.rmtree(twd)
-        return result_pdb, procres.stdout
 
 
 @app.task(bind=True, soft_time_limit=60)

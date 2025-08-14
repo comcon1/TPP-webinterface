@@ -11,7 +11,7 @@
       <p>Processing status:</p>
       <textarea rows="3" cols="80" readonly v-model="processing"></textarea>
     </div>
-    <div v-if="result" class="modal">
+    <div v-if="result || reslog" class="modal">
       <table>
         <tr>
           <td>
@@ -81,11 +81,11 @@ export default {
       this.result = '';
       this.reslog = '';
       this.res_copied = false;
+      this.loading = false;
       this.log_copied = false;
       this.processing = '';
       this.show_processing = false;
       this.taskIds = [];
-      this.loading = false;
     },
     onFileChange() {
       this.clearAll();
