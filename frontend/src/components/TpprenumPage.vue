@@ -6,7 +6,10 @@
       <button type="submit" :disabled="loading">Upload and Process</button>
     </form>
     <div v-if="loading">Processing...</div>
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="error" class="error">
+      <pre>{{ error }}</pre>
+      <p>Please try another file!</p>
+    </div>
     <div v-if="show_processing">
       <p>Processing status:</p>
       <textarea rows="3" cols="80" readonly v-model="processing"></textarea>
