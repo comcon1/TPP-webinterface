@@ -7,6 +7,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 import subprocess
 import re
 import os
+import time
 import shutil
 
 # Configure Celery to use Redis broker and backend
@@ -246,4 +247,14 @@ def remove_tppmktop_folder(self, folder_path):
     except Exception as e:
         logger.error(f"Error removing folder {folder_path}: {e}")
 
+# Moking functions for testing purposes
+
+
+@app.task(bind=True)
+def moking_task_sleep(self, timeout):
+    """
+    Do nothing. Just sleep timeout seconds
+    """
+    time.sleep(timeout)
+    return (timeout+1)
 
