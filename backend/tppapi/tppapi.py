@@ -97,7 +97,7 @@ def get_diralive_status(task_id: str):
     if task_result.status == "PENDING":
         return {"task_id": task_id, "dir_alive": -1}
     # task ready: arithmetic
-    of = os.path.join(task_dir, 'output.itp')
+    of = os.path.join(task_dir, 'console_output.log')
     if not os.path.isfile(of):
         raise HTTPException(status_code=500, detail="Output file not found")
     output_time = os.path.getmtime(of)

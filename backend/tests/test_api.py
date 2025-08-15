@@ -70,3 +70,32 @@ def test_requesting_status():
     assert json_data["task_id"] == task_id
     assert json_data["status"] == "SUCCESS"
     assert json_data["result"] == 6
+
+
+def test_diralive():
+    # notask behavior
+    response = client.get("/diralive/task-which-doesnot-exist")
+    assert response.status_code == 404
+
+    # moking-task with creation of a directory
+    task = ct.app.send_task(
+        "tppapi.celery_tasks.moking_task_sleep", 
+        args=[4, True])
+    task_id = task.id
+    
+    # task is still running
+    time.sleep(1)
+    response = client.get(f"/status/diralive/{task_id}")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["task_id"] == task_id
+    assert float(json_data["dir_alive"]) == -1 # means it still running
+
+    time.sleep(5)
+    response = client.get(f"/status/diralive/{task_id}")
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["task_id"] == task_id
+    da = float(json_data["dir_alive"])
+    assert da > 4 and da < 5 # means it finished and counting
+

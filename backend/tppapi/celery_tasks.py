@@ -186,15 +186,15 @@ def request_process_tppmktop(self, pdb_content):
     try:
         # Run the external command and capture its output
         logger.info("Running TPPMKTOP")
-        rel_input = self.request.id + '/input.pdb'
-        rel_output = self.request.id + '/output.itp'
-        rel_lack = self.request.id + '/lack.itp'
         # docker exec tpproject-tpp-1 runtppmktop.sh -i proc-simpl.pdb -o output.itp -l lack.itp -m -f OPLS-AA
         procres = subprocess.run(
             ['docker', 'exec',
-             "--user", f"{os.getuid()}:{os.getgid()}",
+             '-w', os.path.join('/work', self.request.id),
+             '--user', f'{os.getuid()}:{os.getgid()}',
              container_name, 'runtppmktop.sh',
-             '-i', rel_input, '-o', rel_output, '-l', rel_lack,
+             '-i', 'input.pdb', 
+             '-o', 'output.itp', 
+             '-l', 'lack.itp',
              '-m',
              '--separate',
              '-f', 'OPLS-AA'],
@@ -207,11 +207,6 @@ def request_process_tppmktop(self, pdb_content):
         # save console output to the log
         with open(os.path.join(twd, 'console_output.log'), 'w') as fd:
             fd.write(procres.stdout)
-        # move program log to project folder
-        os.rename(
-            os.path.join(container_vol, 'tppmktop.log'),
-            os.path.join(twd, 'tppmktop.log')
-        )
         logger.info("TPPMKTOP finished")
     except subprocess.CalledProcessError as e:
         logger.error(
@@ -219,17 +214,19 @@ def request_process_tppmktop(self, pdb_content):
             f"Exit code: {e.returncode}\n"
             f"Output: {e.output}"
         )
-        res_pair = (1, twd)
+        with open(os.path.join(twd, 'console_output.log'), 'a') as fd:
+            fd.write(e.output)
+        return (1, twd)
     except SoftTimeLimitExceeded:
         logger.warning(f"Task {self.request.id} hit soft time limit. Cleaning up.")
-        res_pair = (1, twd)
+        # TODO: timeout task termination
+        return (1, twd)
     else:
         logger.info("Normal execution!")
-        res_pair = (0, twd)
+        return (0, twd)
     finally:
         logger.info(f"Calc-folder {twd} is scheduled to be cleaned in 5 min..")
         remove_tppmktop_folder.apply_async(countdown=300, args=[twd])
-        return res_pair
 
 
 @app.task(bind=True)
@@ -251,10 +248,25 @@ def remove_tppmktop_folder(self, folder_path):
 
 
 @app.task(bind=True)
-def moking_task_sleep(self, timeout):
+def moking_task_sleep(self, timeout, add_dir=False):
     """
-    Do nothing. Just sleep timeout seconds
+    Do nothing. Just sleep timeout seconds.
+    If add_dir: making ID-folder with console_output.log
     """
+    if add_dir:
+        logger = self.app.log.get_default_logger()
+        container_vol = self.app.conf.get('CONTAINER_VOL', '/tmp/work')
+        twd = os.path.join(container_vol, self.request.id)
+        try:
+            os.mkdir(twd)
+            with open(os.path.join(twd, 'console_output.log'), 'w') as f:
+                f.write('42')
+        except Exception as e:
+            logger.error(
+                    f'Problem making calc-folder {twd} '
+                    'or writing file into it\n'
+                    f'Exception: {e}')
+            return (timeout+1)
     time.sleep(timeout)
     return (timeout+1)
 
