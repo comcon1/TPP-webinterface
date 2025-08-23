@@ -11,7 +11,7 @@ with bonded interactions information to assign OPLS atomtypes according to chemi
 the Department of Biophysics, Biology Faculty, Lomonosov Moscow State University by 
 <a href="https://github.com/comcon1">@comcon1</a>, 
 <a href="https://github.com/pmamonov">@pmamonov</a>, 
-<a href="httsp://github.com/dvzlenko">@dvzlenko</a>. 
+<a href="https://github.com/dvzlenko">@dvzlenko</a>. 
 Further it was co-developed by <a href="https://github.com/galochkina">@galochkina</a> and 
 A.Mesyats. The project is redistributed under <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPLv3 license</a>.
     </p>
@@ -19,16 +19,16 @@ A.Mesyats. The project is redistributed under <a href="https://www.gnu.org/licen
 <b>Structure.</b> The project is represented in four repositories:
         <ul>
              <li>Main program (C++14, libopenbabel, MySQL++):
-                <a href="https://github.com/TopologyPreProcessor">comcon1/TopologyPreProcessor</a>
+                <a href="https://github.com/comcon1/TopologyPreProcessor">comcon1/TopologyPreProcessor</a>
              </li>
              <li>Docker building recipies (Docker, docker-compose):
-                <a href="https://github.com/TPP-docker">comcon1/TPP-docker</a>
+                <a href="https://github.com/comcon1/TPP-docker">comcon1/TPP-docker</a>
              </li>
              <li>Docker images (DockerHub):
                 <a href="https://hub.docker.com/r/comcon1/tppcon">comcon1/tppcon</a>
              </li>
              <li>TPP-webinterface (python3, fastapi, celery, vue2):
-                <a href="https://github.com/TPP-webinterface">comcon1/TPP-webinterface</a>
+                <a href="https://github.com/comcon1/TPP-webinterface">comcon1/TPP-webinterface</a>
              </li>
         </ul>
     </p>
